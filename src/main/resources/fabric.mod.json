@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "remotewhitelistmanager",
+  "version": "${mod_version}",
+  "name": "RemoteWhitelistManager",
+  "description": "Manage and sync your servers whitelist from an external database.",
+  "authors": [
+    "Kesuaheli"
+  ],
+  "contact": {
+    "sources": "https://github.com/Kesuaheli/RemoteWhitelistManager",
+    "issues": "https://github.com/Kesuaheli/RemoteWhitelistManager/issues"
+  },
+  "license": "MIT",
+  "icon": "icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      "de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager"
+    ]
+  },
+  "mixins": [
+    "remotewhitelistmanager.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
