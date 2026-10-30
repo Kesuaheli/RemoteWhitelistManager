@@ -18,6 +18,7 @@ repositories {
     // See https://docs.gradle.org/current/userguide/declaring_repositories.html
     // for more information about repositories.
     maven {url "https://oss.sonatype.org/content/repositories/releases/"}
+    maven {url "https://api.modrinth.com/maven"}
 }
 
 dependencies {
@@ -29,6 +30,7 @@ dependencies {
     compileOnly "org.postgresql:postgresql:${project.postgresql_version}"
     implementation "org.yaml:snakeyaml:${project.snakeyaml_version}"
     include "org.yaml:snakeyaml:${project.snakeyaml_version}"
+    compileOnly "maven.modrinth:pl3xmap:${project.pl3xmap_version}"
 }
 
 Map<String, String> replaceProperties = [
@@ -36,6 +38,7 @@ Map<String, String> replaceProperties = [
         "minecraft_version": project.minecraft_version,
         "loader_version": project.loader_version,
         "yaml_configuration_version": project.yaml_configuration_version,
+        "pl3xmap_version": project.pl3xmap_version,
 ]
 
 processResources {

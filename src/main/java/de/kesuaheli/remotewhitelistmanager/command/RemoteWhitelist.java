@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
 import de.kesuaheli.remotewhitelistmanager.database.WhitelistEntry;
+import de.kesuaheli.remotewhitelistmanager.integration.Pl3xmapIntegration;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -15,6 +16,9 @@ import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.*;
 import net.minecraft.util.StringRepresentable;
+import net.pl3x.map.core.Pl3xMap;
+import net.pl3x.map.core.markers.layer.Layer;
+import net.pl3x.map.core.world.World;
 import org.jspecify.annotations.NonNull;
 
 import java.sql.Connection;
@@ -42,6 +46,14 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 				.requires(Commands.hasPermission(Commands.LEVEL_MODERATORS))
 				.executes(this::reconnectDB)
 		);
+		if (Pl3xmapIntegration.INSTANCE.isPresent()) {
+			then(Commands.literal("marker")
+					.requires(Commands.hasPermission(Commands.LEVEL_MODERATORS))
+					.then(Commands.literal("update")
+							.executes(this::markerUpdate)
+					)
+			);
+		}
 	}
 
 	private int connectDB(CommandContext<CommandSourceStack> ctx) {
@@ -151,6 +163,25 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 							.append(" changes in total.")
 			);
 		}
+
+		return 0;
+	}
+
+	public int markerUpdate(CommandContext<CommandSourceStack> ctx) {
+		World world = Pl3xMap.api().getWorldRegistry().get("minecraft:overworld");
+		if (world == null) {
+			LOGGER.warn("tried to get pl3xmap overworld, but it is null");
+			return 1;
+		}
+
+		Layer bases = world.getLayerRegistry().get("bases");
+		if (bases == null) {
+			LOGGER.warn("bases markers don't exit");
+			ctx.getSource().sendSystemMessage(Component.literal("No markers exist").withColor(TextColor.RED));
+			return 0;
+		}
+
+		ctx.getSource().sendSystemMessage(Component.literal("Bases: "+bases.getMarkers().size()).withColor(TextColor.GREEN));
 
 		return 0;
 	}
