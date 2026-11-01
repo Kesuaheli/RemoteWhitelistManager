@@ -1,25 +1,18 @@
 package de.kesuaheli.remotewhitelistmanager.command;
 
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
+import de.kesuaheli.remotewhitelistmanager.database.MarkerEntry;
 import de.kesuaheli.remotewhitelistmanager.database.WhitelistEntry;
 import de.kesuaheli.remotewhitelistmanager.integration.Pl3xmapIntegration;
-import net.fabricmc.loader.api.FabricLoader;
+import de.kesuaheli.remotewhitelistmanager.pl3xmap.Pl3xmapMarker;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.dedicated.DedicatedServer;
-import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.server.players.*;
-import net.minecraft.util.StringRepresentable;
-import net.pl3x.map.core.Pl3xMap;
-import net.pl3x.map.core.markers.layer.Layer;
-import net.pl3x.map.core.world.World;
-import org.jspecify.annotations.NonNull;
+import net.pl3x.map.core.markers.layer.SimpleLayer;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -47,12 +40,15 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 				.executes(this::reconnectDB)
 		);
 		if (Pl3xmapIntegration.INSTANCE.isPresent()) {
+			LOGGER.info("plexmap is present, registering command");
 			then(Commands.literal("marker")
 					.requires(Commands.hasPermission(Commands.LEVEL_MODERATORS))
 					.then(Commands.literal("update")
 							.executes(this::markerUpdate)
 					)
 			);
+		} else {
+			LOGGER.info("plexmap is not present, not registering command");
 		}
 	}
 
@@ -168,18 +164,11 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 	}
 
 	public int markerUpdate(CommandContext<CommandSourceStack> ctx) {
-		World world = Pl3xMap.api().getWorldRegistry().get("minecraft:overworld");
-		if (world == null) {
-			LOGGER.warn("tried to get pl3xmap overworld, but it is null");
-			return 1;
-		}
+		SimpleLayer bases = Pl3xmapMarker.getBases();
+		bases.clearMarkers();
 
-		Layer bases = world.getLayerRegistry().get("bases");
-		if (bases == null) {
-			LOGGER.warn("bases markers don't exit");
-			ctx.getSource().sendSystemMessage(Component.literal("No markers exist").withColor(TextColor.RED));
-			return 0;
-		}
+		List<MarkerEntry> markers = MarkerEntry.getAll();
+		markers.forEach(bases::addMarker);
 
 		ctx.getSource().sendSystemMessage(Component.literal("Bases: "+bases.getMarkers().size()).withColor(TextColor.GREEN));
 
