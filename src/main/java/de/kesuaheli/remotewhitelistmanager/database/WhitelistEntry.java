@@ -7,121 +7,94 @@ import org.jetbrains.annotations.Nullable;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
+import java.util.random.RandomGenerator;
 
 public class WhitelistEntry {
-	public final int userID;
-	//public User user;
+	private static final RandomGenerator RANDOM = new Random();
+	private final int userID;
 	public final UUID uuid;
-	public String name;
-	public String[] nicknames;
-	private int referenceID;
-	public WhitelistEntry reference;
-	public String discordID;
-	//public Marker[] markers;
 	private int flags;
+	private User user;
+
+	static final Map<UUID, WhitelistEntry> CACHE = new HashMap<>();
+
+	public static final String TABLE = "whitelist";
+	private static final String GET_ALL_SQL = "SELECT *, "+
+			TABLE+".id AS "+TABLE+"_id, "+
+			TABLE+".flags AS "+TABLE+"_flags, "+
+			User.TABLE+".id AS "+User.TABLE+"_id, "+
+			User.TABLE+".flags AS "+User.TABLE+"_flags FROM "+TABLE+" INNER JOIN "+User.TABLE+" on "+TABLE+".id = "+User.TABLE+".id";
 
 	public static final int FLAG_ACTIVE = 1;
-	public static final int FLAG_ADMIN = 2;
 
 	private WhitelistEntry(final int userID, final UUID uuid) {
 		this.userID = userID;
 		this.uuid = uuid;
 	}
 
-	public static @Nullable WhitelistEntry getByID(int id) {
-		final WhitelistEntry entry;
+	static @Nullable WhitelistEntry parse(ResultSet res) throws SQLException {
+		final UUID uuid;
 		try {
-			try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement("SELECT uuid,name,nicknames,reference,discord_id,flags FROM whitelist WHERE id=?")) {
-				statement.setInt(1, id);
-				ResultSet res = statement.executeQuery();
-				if (!res.first()) {
-					// no user found with id
-					return null;
-				}
-				// early ignore inactive entries
-				int flags = res.getInt(6);
-				if ((flags&FLAG_ACTIVE) == 0) {
-					return null;
-				}
-
-				String uuid = res.getString(1);
-				entry = new WhitelistEntry(id, UUID.fromString(uuid));
-
-				entry.name = res.getString(2);
-				entry.nicknames = res.getString(3).split("\\|");
-				entry.referenceID = res.getInt(4);
-				entry.discordID = res.getString(5);
-				entry.flags = flags;
-			}
+			uuid = UUID.fromString(res.getString("uuid"));
 		} catch (SQLException e) {
-			throw new RuntimeException(e);
+			// assume there is no whitelistEntry
+			return null;
 		}
-		return entry;
+		WhitelistEntry mcAccount = CACHE.get(uuid);
+		if (mcAccount == null) {
+			final int id = res.getInt(TABLE + "_id");
+			mcAccount = new WhitelistEntry(id, uuid);
+			mcAccount.flags = res.getInt(TABLE + "_flags");
+			mcAccount.user = User.parse(res);
+			CACHE.put(uuid, mcAccount);
+		}
+		return mcAccount;
 	}
 
-	public static @NotNull List<WhitelistEntry> getByNameMatch(String name) {
-		List<WhitelistEntry> entries = new ArrayList<>();
-		try {
-			try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement("SELECT id,uuid,name,nicknames,reference,discord_id,flags FROM whitelist WHERE lower(name) LIKE lower(?)")) {
-				statement.setString(1, "%"+name+"%");
-				ResultSet res = statement.executeQuery();
-				while (res.next()) {
-					// early ignore inactive entries
-					int flags = res.getInt(7);
-					if ((flags&FLAG_ACTIVE) == 0) {
-						continue;
-					}
-
-					int id = res.getInt(1);
-					String uuid = res.getString(2);
-					final WhitelistEntry entry = new WhitelistEntry(id, UUID.fromString(uuid));
-
-					entry.name = res.getString(3);
-					entry.nicknames = res.getString(4).split("\\|");
-					entry.referenceID = res.getInt(5);
-					entry.discordID = res.getString(6);
-					entry.flags = flags;
-					entries.add(entry);
-				}
+	public static @Nullable WhitelistEntry getByID(int id) {
+		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE "+TABLE+".id=?", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+			statement.setInt(1, id);
+			ResultSet res = statement.executeQuery();
+			if (!res.first()) {
+				// no user found with id
+				return null;
 			}
+			return parse(res);
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
 		}
-		return entries;
+	}
+
+	public static @Nullable WhitelistEntry getByUUID(String uuid) {
+		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE "+TABLE+".uuid=?", ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_UPDATABLE)) {
+			statement.setString(1, uuid);
+			ResultSet res = statement.executeQuery();
+			if (!res.first()) {
+				// no user found with id
+				return null;
+			}
+			return parse(res);
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	public static @NotNull List<WhitelistEntry> getAll() {
-		List<WhitelistEntry> entries = new ArrayList<>();
-		try {
-			try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement("SELECT id,uuid,name,nicknames,reference,discord_id,flags FROM whitelist")) {
-				ResultSet res = statement.executeQuery();
-				while (res.next()) {
-					// early ignore inactive entries
-					int flags = res.getInt(7);
-					if ((flags&FLAG_ACTIVE) == 0) {
-						continue;
-					}
-
-					int id = res.getInt(1);
-					String uuid = res.getString(2);
-					final WhitelistEntry entry = new WhitelistEntry(id, UUID.fromString(uuid));
-
-					entry.name = res.getString(3);
-					entry.nicknames = res.getString(4).split("\\|");
-					entry.referenceID = res.getInt(5);
-					entry.discordID = res.getString(6);
-					entry.flags = flags;
-					entries.add(entry);
-				}
+		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL)) {
+			ResultSet res = statement.executeQuery();
+			List<WhitelistEntry> entries = new ArrayList<>();
+			while (res.next()) {
+				entries.add(parse(res));
 			}
+			return entries;
 		} catch (SQLException e) {
 			throw new RuntimeException(e);
 		}
-		return entries;
+	}
+
+	public static void clearCache() {
+		CACHE.clear();
 	}
 
 	@Override
@@ -129,11 +102,6 @@ public class WhitelistEntry {
 		return "WhitelistEntry{" +
 				"userID=" + userID +
 				", uuid=" + uuid +
-				", name='" + name + '\'' +
-				", nicknames=" + Arrays.toString(nicknames) +
-				", referenceID=" + referenceID +
-				", reference=" + reference +
-				", discordID='" + discordID + '\'' +
 				", flags=" + flags +
 				'}';
 	}
@@ -154,7 +122,11 @@ public class WhitelistEntry {
 		}
 	}
 
-	public boolean isAdmin() {
-		return (this.flags&FLAG_ADMIN) != 0;
+	public User getUser() {
+		return user;
+	}
+
+	public UUID getUuid() {
+		return uuid;
 	}
 }

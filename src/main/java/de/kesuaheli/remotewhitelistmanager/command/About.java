@@ -4,6 +4,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
+import de.kesuaheli.remotewhitelistmanager.database.User;
 import de.kesuaheli.remotewhitelistmanager.database.WhitelistEntry;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -34,12 +35,11 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 
 	private int execute(CommandContext<CommandSourceStack> ctx, AboutType typeArgument) {
 		String nameArgument = ctx.getArgument("name", String.class);
-		LOGGER.info("About executed type={}, name={}", typeArgument, nameArgument);
 		switch (typeArgument) {
 			case NAME -> {
-				List<WhitelistEntry> entries = WhitelistEntry.getByNameMatch(nameArgument);
-				for (WhitelistEntry entry : entries) {
-					LOGGER.info(entry.toString());
+				List<User> entries = User.getByNameMatch(nameArgument);
+				for (User user : entries) {
+					LOGGER.info(user.toString());
 				}
 			}
 			default -> {

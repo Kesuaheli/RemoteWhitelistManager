@@ -4,6 +4,8 @@ import de.kesuaheli.remotewhitelistmanager.command.About;
 import de.kesuaheli.remotewhitelistmanager.command.RemoteWhitelist;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,6 +16,7 @@ import java.sql.SQLException;
 
 public class RemoteWhitelistmanager implements ModInitializer {
 	public static Logger LOGGER = LoggerFactory.getLogger("RemoteWhitelistmanager");
+	public static MinecraftServer SERVER_INSTANCE;
 
 	private static Connection postgresConn;
 
@@ -21,6 +24,7 @@ public class RemoteWhitelistmanager implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		ServerLifecycleEvents.SERVER_STARTED.register(server -> SERVER_INSTANCE = server);
 		CommandRegistrationCallback.EVENT.register((commandDispatcher, commandRegistryAccess, registrationEnvironment) -> {
 			commandDispatcher.register(new About());
 			commandDispatcher.register(new RemoteWhitelist());
@@ -38,6 +42,7 @@ public class RemoteWhitelistmanager implements ModInitializer {
 			return;
 		}
 		connectSQL();
+
 		LOGGER.info("Remote Whitelist Manager loaded!");
 	}
 
