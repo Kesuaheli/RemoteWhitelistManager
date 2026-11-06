@@ -5,6 +5,8 @@ import de.kesuaheli.remotewhitelistmanager.command.RemoteWhitelist;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,14 +52,46 @@ public class RemoteWhitelistmanager implements ModInitializer {
 		return postgresConn;
 	}
 
-	public static boolean connectSQL() {
+	public static SQLConnectionState connectSQL() {
+		try {
+			if (!postgresConn.isClosed()) {
+				return SQLConnectionState.ALREADY_CONNECTED;
+			}
+		} catch (SQLException ignore) {
+		}
+
 		try {
 			postgresConn = DriverManager.getConnection(config.SQLConnectionString(), config.SQLCredentials());
 		} catch (SQLException e) {
-			LOGGER.error("Failed to connect to DB", e);
-			return false;
+			LOGGER.error(SQLConnectionState.FAILED.message, e);
+			return SQLConnectionState.FAILED;
 		}
-		LOGGER.info("Connected to database");
-		return true;
+		return SQLConnectionState.SUCCESSFULLY_CONNECTED;
+	}
+
+	public enum SQLConnectionState {
+		ALREADY_CONNECTED("Is already connected"),
+		SUCCESSFULLY_CONNECTED("Connected to Database"),
+		FAILED("Failed to connect to the database", TextColor.RED);
+
+		public final String message;
+		public final TextColor color;
+
+		SQLConnectionState(final String message) {
+			this(message, TextColor.GREEN);
+		}
+
+		SQLConnectionState(final String message, final TextColor color) {
+			this.message = message;
+			this.color = color;
+		}
+
+		public Component getMessage() {
+			return Component.literal(this.message).withColor(this.color);
+		}
+
+		public boolean ok() {
+			return this.color.equals(TextColor.GREEN);
+		}
 	}
 }

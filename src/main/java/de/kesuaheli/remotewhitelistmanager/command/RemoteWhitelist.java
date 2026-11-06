@@ -15,8 +15,6 @@ import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.players.*;
 import net.pl3x.map.core.markers.layer.SimpleLayer;
 
-import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,10 +42,6 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 				.requires(Commands.hasPermission(Commands.LEVEL_MODERATORS))
 				.executes(this::connectDB)
 		);
-		then(Commands.literal("reconnect")
-				.requires(Commands.hasPermission(Commands.LEVEL_MODERATORS))
-				.executes(this::reconnectDB)
-		);
 		if (Pl3xmapIntegration.INSTANCE.isPresent()) {
 			LOGGER.info("plexmap is present, registering command");
 			then(Commands.literal("marker")
@@ -62,37 +56,12 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 	}
 
 	private int connectDB(CommandContext<CommandSourceStack> ctx) {
-		Connection sql = RemoteWhitelistmanager.getSQL();
-
 		asyncExecutor.submit(() -> {
-			try {
-				if (!sql.isClosed()) {
-					ctx.getSource().sendSystemMessage(Component.literal("Is already connected").withColor(TextColor.GREEN));
-					return;
-				}
-			} catch (SQLException ignore) {
-			}
-
-			if (RemoteWhitelistmanager.connectSQL()) {
-				ctx.getSource().sendSystemMessage(Component.literal("Connected to Database").withColor(TextColor.GREEN));
-			} else {
-				ctx.getSource().sendSystemMessage(Component.literal("Failed to connect to the database").withColor(TextColor.RED));
-			}
+			final RemoteWhitelistmanager.SQLConnectionState state = RemoteWhitelistmanager.connectSQL();
+			ctx.getSource().sendSystemMessage(state.getMessage());
 		});
 
 		return 0;
-	}
-
-	private int reconnectDB(CommandContext<CommandSourceStack> ctx) {
-		Connection sql = RemoteWhitelistmanager.getSQL();
-		try {
-			if (!sql.isClosed()) {
-				sql.close();
-			}
-		} catch (SQLException ignore) {
-		}
-
-		return this.connectDB(ctx);
 	}
 
 	private int clearCache(CommandContext<CommandSourceStack> ctx) {
@@ -105,6 +74,12 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 	private int executeUpdate(CommandContext<CommandSourceStack> ctx) {
 		ctx.getSource().sendSystemMessage(Component.literal("Updating Whitelist from remote..."));
 		asyncExecutor.submit(() -> {
+			final RemoteWhitelistmanager.SQLConnectionState state = RemoteWhitelistmanager.connectSQL();
+			if (state != RemoteWhitelistmanager.SQLConnectionState.ALREADY_CONNECTED) {
+				ctx.getSource().sendSystemMessage(state.getMessage());
+			}
+			if (!state.ok()) return;
+
 			try {
 				WhitelistEntry.clearCache();
 				final List<WhitelistEntry> entries;
@@ -201,6 +176,12 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 		SimpleLayer bases = Pl3xmapMarker.getBases();
 
 		asyncExecutor.submit(() -> {
+			final RemoteWhitelistmanager.SQLConnectionState state = RemoteWhitelistmanager.connectSQL();
+			if (state != RemoteWhitelistmanager.SQLConnectionState.ALREADY_CONNECTED) {
+				ctx.getSource().sendSystemMessage(state.getMessage());
+			}
+			if (!state.ok()) return;
+
 			bases.clearMarkers();
 			MarkerEntry.clearCache();
 
