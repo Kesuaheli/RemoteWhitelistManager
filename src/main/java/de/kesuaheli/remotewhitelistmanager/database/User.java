@@ -1,6 +1,9 @@
 package de.kesuaheli.remotewhitelistmanager.database;
 
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.TextColor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -17,7 +20,7 @@ public class User {
 	private String username;
 	private String name;
 	private String onlineName;
-	private String[] nicknames;
+	private List<String> nicknames;
 	private int referenceID;
 	private User reference;
 	private int flags;
@@ -49,7 +52,7 @@ public class User {
 			user.username = res.getString("username");
 			user.name = res.getString("name");
 			user.onlineName = res.getString("online_name");
-			user.nicknames = res.getString("nicknames").split("\\|");
+			user.nicknames = Arrays.stream(res.getString("nicknames").split("\\|")).filter(s -> !s.isBlank()).toList();
 			user.referenceID = res.getInt("reference_id");
 			user.flags = res.getInt(TABLE + "_flags");
 			user.discord = res.getString("discord");
@@ -76,8 +79,10 @@ public class User {
 	}
 
 	public static @NotNull List<User> getByNameMatch(String name) {
-		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE lower("+TABLE+".online_name) LIKE lower(?)")) {
+		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE lower("+TABLE+".online_name) LIKE lower(?) OR lower("+TABLE+".username) LIKE lower(?) OR lower("+TABLE+".nicknames) LIKE lower(?)")) {
 			statement.setString(1, "%"+name+"%");
+			statement.setString(2, "%"+name+"%");
+			statement.setString(3, "%"+name+"%");
 			ResultSet res = statement.executeQuery();
 			List<User> entries = new ArrayList<>();
 			while (res.next()) {
@@ -118,7 +123,7 @@ public class User {
 				", username='" + username + '\'' +
 				", name='" + name + '\'' +
 				", onlineName='" + onlineName + '\'' +
-				", nicknames=" + Arrays.toString(nicknames) +
+				", nicknames=" + nicknames +
 				", referenceID=" + referenceID +
 				", reference=" + reference +
 				", flags=" + flags +
@@ -126,6 +131,29 @@ public class User {
 				", twitch='" + twitch + '\'' +
 				", whitelistEntry=" + whitelistEntry +
 				'}';
+	}
+
+	public MutableComponent format() {
+		MutableComponent text = Component.literal("Username: ").withColor(TextColor.GRAY);
+		text.append(Component.literal(this.username).withColor(TextColor.GOLD));
+		if (!this.onlineName.isEmpty()) {
+			text.append("\nName: ");
+			text.append(Component.literal(this.onlineName).withColor(TextColor.AQUA));
+		}
+		if (!this.nicknames.isEmpty()) {
+			text.append("\nNicknames: ");
+			text.append(Component.literal(String.join(", ", this.nicknames)).withColor(TextColor.DARK_AQUA));
+		}
+		if (!this.discord.isBlank()) {
+			text.append("\nDiscord ID: ");
+			text.append(Component.literal(this.discord).withColor(TextColor.WHITE));
+		}
+		if (this.whitelistEntry != null && this.whitelistEntry.isActive()) {
+			text.append("\nMinecraft: ");
+			String mcUsername = MarkerEntry.getUsername(this.whitelistEntry.uuid);
+			text.append(Component.literal(mcUsername).withColor(TextColor.WHITE));
+		}
+		return text;
 	}
 
 	public boolean isAdmin() {
@@ -144,7 +172,7 @@ public class User {
 		return onlineName;
 	}
 
-	public String[] getNicknames() {
+	public List<String> getNicknames() {
 		return nicknames;
 	}
 

@@ -163,7 +163,7 @@ public class MarkerEntry extends Rectangle {
 			.fetchById(uuid)
 			.map(GameProfile::name);
 		newName.ifPresent(s -> usernameCache.put(uuid, s));
-		return newName.orElse("???");
+		return newName.orElse("UNRESOLVED NAME <"+uuid+">");
 	}
 
 	public static void clearCache() {
