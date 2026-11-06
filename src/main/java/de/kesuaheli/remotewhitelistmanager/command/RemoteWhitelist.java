@@ -80,91 +80,87 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 			}
 			if (!state.ok()) return;
 
+			WhitelistEntry.clearCache();
+			final List<WhitelistEntry> entries;
 			try {
-				WhitelistEntry.clearCache();
-				final List<WhitelistEntry> entries;
-				try {
-					entries = WhitelistEntry.getAll();
-				} catch (Exception e) {
-					LOGGER.error("Error getting whitelist entries", e);
-					ctx.getSource().sendSystemMessage(Component.literal("Failed to update whitelist!").withColor(TextColor.RED));
-					return;
-				}
-				int removedOPs = 0, removedUsers = 0, addedOPs = 0, addedUsers = 0;
-
-				// remove non-admins
-				PlayerList playerList = ctx.getSource().getServer().getPlayerList();
-				ServerOpList opList = playerList.getOps();
-				for (ServerOpListEntry opEntry : opList.getEntries()) {
-					assert opEntry.getUser() != null;
-					UUID uuid = opEntry.getUser().id();
-					Optional<WhitelistEntry> e = entries.stream().filter(whitelistEntry -> whitelistEntry.uuid.equals(uuid)).findFirst();
-					if (e.isEmpty() || !e.get().getUser().isAdmin()) {
-						playerList.deop(opEntry.getUser());
-						removedOPs++;
-					}
-				}
-
-				// remove non-active users
-				UserWhiteList whiteList = playerList.getWhiteList();
-				for (UserWhiteListEntry whiteListEntryEntry : whiteList.getEntries()) {
-					assert whiteListEntryEntry.getUser() != null;
-					UUID uuid = whiteListEntryEntry.getUser().id();
-					Optional<WhitelistEntry> e = entries.stream().filter(whitelistEntry -> whitelistEntry.uuid.equals(uuid)).findFirst();
-					if (e.isEmpty()) {
-						whiteList.remove(whiteListEntryEntry.getUser());
-						removedUsers++;
-					}
-				}
-
-				// add new users and admins
-				for (WhitelistEntry entry : entries) {
-					NameAndId nameAndId = new NameAndId(entry.uuid, entry.getUser().getOnlineName());
-					if (!whiteList.isWhiteListed(nameAndId)) {
-						whiteList.add(new UserWhiteListEntry(nameAndId));
-						addedUsers++;
-					}
-					if (entry.getUser().isAdmin() && !playerList.isOp(nameAndId)) {
-						playerList.op(nameAndId);
-						addedOPs++;
-					}
-				}
-
-				if (removedOPs == 0 && removedUsers == 0 && addedOPs == 0 && addedUsers == 0) {
-					ctx.getSource().sendSystemMessage(Component.literal("Whitelist is already up to date!").withColor(TextColor.GREEN));
-				} else if (removedOPs == 0 && removedUsers == 0 && addedOPs == 0) {
-					ctx.getSource().sendSystemMessage(
-							Component.literal("Added ")
-									.append(Component.literal(String.valueOf(addedUsers)).withColor(TextColor.GREEN))
-									.append(" new user(s).")
-					);
-				} else if (removedOPs == 0 && addedOPs == 0 && addedUsers == 0) {
-					ctx.getSource().sendSystemMessage(
-							Component.literal("Removed ")
-									.append(Component.literal(String.valueOf(removedUsers)).withColor(TextColor.GREEN))
-									.append(" user(s).")
-					);
-				} else if (removedOPs == 0 && removedUsers == 0 && addedUsers == 0) {
-					ctx.getSource().sendSystemMessage(
-							Component.literal("Added ")
-									.append(Component.literal(String.valueOf(addedOPs)).withColor(TextColor.GREEN))
-									.append(" new op(s).")
-					);
-				} else if (removedUsers == 0 && addedOPs == 0 && addedUsers == 0) {
-					ctx.getSource().sendSystemMessage(
-							Component.literal("Removed ")
-									.append(Component.literal(String.valueOf(removedOPs)).withColor(TextColor.GREEN))
-									.append(" op(s).")
-					);
-				} else {
-					ctx.getSource().sendSystemMessage(
-							Component.literal("Updated whitelist with ")
-									.append(String.valueOf(removedOPs + removedUsers + addedOPs + addedUsers)).withColor(TextColor.GOLD)
-									.append(" changes in total.")
-					);
-				}
+				entries = WhitelistEntry.getAll();
 			} catch (Exception e) {
-				LOGGER.error("Error in executing remote whitelist update", e);
+				LOGGER.error("Error getting whitelist entries", e);
+				ctx.getSource().sendSystemMessage(Component.literal("Failed to update whitelist!").withColor(TextColor.RED));
+				return;
+			}
+			int removedOPs = 0, removedUsers = 0, addedOPs = 0, addedUsers = 0;
+
+			// remove non-admins
+			PlayerList playerList = ctx.getSource().getServer().getPlayerList();
+			ServerOpList opList = playerList.getOps();
+			for (ServerOpListEntry opEntry : opList.getEntries()) {
+				assert opEntry.getUser() != null;
+				UUID uuid = opEntry.getUser().id();
+				Optional<WhitelistEntry> e = entries.stream().filter(whitelistEntry -> whitelistEntry.uuid.equals(uuid)).findFirst();
+				if (e.isEmpty() || !e.get().getUser().isAdmin()) {
+					playerList.deop(opEntry.getUser());
+					removedOPs++;
+				}
+			}
+
+			// remove non-active users
+			UserWhiteList whiteList = playerList.getWhiteList();
+			for (UserWhiteListEntry whiteListEntryEntry : whiteList.getEntries()) {
+				assert whiteListEntryEntry.getUser() != null;
+				UUID uuid = whiteListEntryEntry.getUser().id();
+				Optional<WhitelistEntry> e = entries.stream().filter(whitelistEntry -> whitelistEntry.uuid.equals(uuid)).findFirst();
+				if (e.isEmpty()) {
+					whiteList.remove(whiteListEntryEntry.getUser());
+					removedUsers++;
+				}
+			}
+
+			// add new users and admins
+			for (WhitelistEntry entry : entries) {
+				NameAndId nameAndId = new NameAndId(entry.uuid, entry.getUser().getOnlineName());
+				if (!whiteList.isWhiteListed(nameAndId)) {
+					whiteList.add(new UserWhiteListEntry(nameAndId));
+					addedUsers++;
+				}
+				if (entry.getUser().isAdmin() && !playerList.isOp(nameAndId)) {
+					playerList.op(nameAndId);
+					addedOPs++;
+				}
+			}
+
+			if (removedOPs == 0 && removedUsers == 0 && addedOPs == 0 && addedUsers == 0) {
+				ctx.getSource().sendSystemMessage(Component.literal("Whitelist is already up to date!").withColor(TextColor.GREEN));
+			} else if (removedOPs == 0 && removedUsers == 0 && addedOPs == 0) {
+				ctx.getSource().sendSystemMessage(
+						Component.literal("Added ")
+								.append(Component.literal(String.valueOf(addedUsers)).withColor(TextColor.GREEN))
+								.append(" new user(s).")
+				);
+			} else if (removedOPs == 0 && addedOPs == 0 && addedUsers == 0) {
+				ctx.getSource().sendSystemMessage(
+						Component.literal("Removed ")
+								.append(Component.literal(String.valueOf(removedUsers)).withColor(TextColor.GREEN))
+								.append(" user(s).")
+				);
+			} else if (removedOPs == 0 && removedUsers == 0 && addedUsers == 0) {
+				ctx.getSource().sendSystemMessage(
+						Component.literal("Added ")
+								.append(Component.literal(String.valueOf(addedOPs)).withColor(TextColor.GREEN))
+								.append(" new op(s).")
+				);
+			} else if (removedUsers == 0 && addedOPs == 0 && addedUsers == 0) {
+				ctx.getSource().sendSystemMessage(
+						Component.literal("Removed ")
+								.append(Component.literal(String.valueOf(removedOPs)).withColor(TextColor.GREEN))
+								.append(" op(s).")
+				);
+			} else {
+				ctx.getSource().sendSystemMessage(
+						Component.literal("Updated whitelist with ")
+								.append(String.valueOf(removedOPs + removedUsers + addedOPs + addedUsers)).withColor(TextColor.GOLD)
+								.append(" changes in total.")
+				);
 			}
 		});
 
