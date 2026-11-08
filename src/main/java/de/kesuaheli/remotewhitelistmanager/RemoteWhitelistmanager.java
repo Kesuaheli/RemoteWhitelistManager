@@ -54,7 +54,7 @@ public class RemoteWhitelistmanager implements ModInitializer {
 
 	public static SQLConnectionState connectSQL() {
 		try {
-			if (!postgresConn.isClosed()) {
+			if (postgresConn != null && !postgresConn.isClosed()) {
 				return SQLConnectionState.ALREADY_CONNECTED;
 			}
 		} catch (SQLException ignore) {
