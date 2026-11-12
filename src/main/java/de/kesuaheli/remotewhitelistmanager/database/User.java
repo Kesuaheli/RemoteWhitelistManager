@@ -35,6 +35,7 @@ public class User {
 			WhitelistEntry.TABLE+".id AS "+WhitelistEntry.TABLE+"_id, "+
 			WhitelistEntry.TABLE+".flags AS "+WhitelistEntry.TABLE+"_flags, "+
 			TABLE+".id AS "+TABLE+"_id, "+
+			TABLE+".name AS "+TABLE+"_name, "+
 			TABLE+".flags AS "+TABLE+"_flags FROM "+TABLE+" LEFT OUTER JOIN "+WhitelistEntry.TABLE+" on "+TABLE+".id = "+WhitelistEntry.TABLE+".id";
 
 	public static final int FLAG_ADMIN = 1;
@@ -50,7 +51,7 @@ public class User {
 			user = new User(id);
 			user.email = res.getString("email");
 			user.username = res.getString("username");
-			user.name = res.getString("name");
+			user.name = res.getString(TABLE+"_name");
 			user.onlineName = res.getString("online_name");
 			user.nicknames = Arrays.stream(res.getString("nicknames").split("\\|")).filter(s -> !s.isBlank()).toList();
 			user.referenceID = res.getInt("reference_id");

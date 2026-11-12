@@ -17,6 +17,8 @@ import java.util.*;
 public class MarkerEntry extends Rectangle {
 	public final int ID;
 
+	private final String name;
+
 	public static final Map<UUID, String> usernameCache = new HashMap<>();
 
 	private final Options.Builder optionsBuilder = Options.builder();
@@ -29,17 +31,20 @@ public class MarkerEntry extends Rectangle {
 	public static final String LINK_TABLE = "user_markers";
 	private static final String GET_ALL_SQL = "SELECT *, "+
 			TABLE+".id AS "+TABLE+"_id, "+
+			TABLE+".name AS "+TABLE+"_name, "+
 			WhitelistEntry.TABLE+".id AS "+WhitelistEntry.TABLE+"_id, "+
 			WhitelistEntry.TABLE+".flags AS "+WhitelistEntry.TABLE+"_flags, "+
 			User.TABLE+".id AS "+User.TABLE+"_id, "+
+			User.TABLE+".name AS "+User.TABLE+"_name, "+
 			User.TABLE+".flags AS "+User.TABLE+"_flags FROM "+TABLE+
 			" LEFT OUTER JOIN "+LINK_TABLE+" ON "+TABLE+".id = "+LINK_TABLE+".marker_id"+
 			" INNER JOIN "+WhitelistEntry.TABLE+" ON "+LINK_TABLE+".whitelist_entry_uuid = "+WhitelistEntry.TABLE+".uuid"+
 			" INNER JOIN "+User.TABLE+" ON "+WhitelistEntry.TABLE+".id = "+User.TABLE+".id";
 
-	private MarkerEntry(final int ID, int X1, int Z1, int X2, int Z2) {
+	private MarkerEntry(final int ID, final String name, int X1, int Z1, int X2, int Z2) {
 		super(""+ID, X1, Z1, X2, Z2);
 		this.ID = ID;
+		this.name = name;
 	}
 
 	static MarkerEntry parse(ResultSet res) throws SQLException {
@@ -47,6 +52,7 @@ public class MarkerEntry extends Rectangle {
 		MarkerEntry marker = CACHE.get(id);
 		if (marker == null) {
 			marker = new MarkerEntry(id,
+					res.getString(TABLE+"_name"),
 					res.getInt("point1_x"),
 					res.getInt("point1_z"),
 					res.getInt("point2_x"),
@@ -81,8 +87,12 @@ public class MarkerEntry extends Rectangle {
 		final int TOOLTIP_IMG_SIZE=21;
 		final int POPUP_IMG_SIZE=69;
 
-		StringBuilder tooltip = new StringBuilder("<div style='vertical-align: middle; text-align: center;'>");
-		StringBuilder popup = new StringBuilder("<div style='vertical-align: middle; text-align:center;'>");
+		StringBuilder tooltip = new StringBuilder("<div style='vertical-align: middle; text-align: center;'><b>");
+		StringBuilder popup = new StringBuilder("<div style='vertical-align: middle; text-align:center;'><h2>");
+		tooltip.append(this.name);
+		popup.append(this.name);
+		tooltip.append("</b><br>");
+		popup.append("</h2><br>");
 		for (WhitelistEntry user : this.users) {
 			tooltip.append("<img src='/images/skins/2D/");
 			tooltip.append(user.uuid);

@@ -24,6 +24,7 @@ public class WhitelistEntry {
 			TABLE+".id AS "+TABLE+"_id, "+
 			TABLE+".flags AS "+TABLE+"_flags, "+
 			User.TABLE+".id AS "+User.TABLE+"_id, "+
+			User.TABLE+".name AS "+User.TABLE+"_name, "+
 			User.TABLE+".flags AS "+User.TABLE+"_flags FROM "+TABLE+" INNER JOIN "+User.TABLE+" on "+TABLE+".id = "+User.TABLE+".id";
 
 	public static final int FLAG_ACTIVE = 1;
