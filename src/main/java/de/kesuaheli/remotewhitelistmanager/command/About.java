@@ -3,6 +3,7 @@ package de.kesuaheli.remotewhitelistmanager.command;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
 import de.kesuaheli.remotewhitelistmanager.database.User;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -46,6 +47,12 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 		String nameArgument = ctx.getArgument("name", String.class);
 
 		asyncExecutor.submit(() -> {
+			final RemoteWhitelistmanager.SQLConnectionState state = RemoteWhitelistmanager.connectSQL();
+			if (state != RemoteWhitelistmanager.SQLConnectionState.ALREADY_CONNECTED) {
+				ctx.getSource().sendSystemMessage(state.getMessage());
+			}
+			if (!state.ok()) return;
+
 			switch (typeArgument) {
 				case NAME -> {
 					List<User> entries = User.getByNameMatch(nameArgument);
