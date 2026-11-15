@@ -14,8 +14,6 @@ import net.minecraft.server.dialog.*;
 import net.minecraft.server.dialog.body.DialogBody;
 import net.minecraft.server.dialog.body.PlainMessage;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.StringRepresentable;
-import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,16 +29,12 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 
 	public About() {
 		super("about");
-		for (AboutType type : AboutType.values()) {
-			then(Commands.literal(type.getSerializedName())
-					.then(Commands.argument("name", StringArgumentType.greedyString())
-							.executes(ctx -> this.execute(ctx, type))
-					)
-			);
-		}
+		then(Commands.argument("name", StringArgumentType.greedyString())
+				.executes(this::execute)
+		);
 	}
 
-	private int execute(CommandContext<CommandSourceStack> ctx, AboutType typeArgument) {
+	private int execute(CommandContext<CommandSourceStack> ctx) {
 		ServerPlayer player = ctx.getSource().getPlayer();
 		List<DialogBody> body = new ArrayList<>();
 
@@ -53,20 +47,19 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 			}
 			if (!state.ok()) return;
 
-			switch (typeArgument) {
-				case NAME -> {
-					List<User> entries = User.getByNameMatch(nameArgument);
-					for (User user : entries) {
-						if (player == null) {
-							LOGGER.info(user.toString());
-						}
-						body.add(new PlainMessage(user.format(), PlainMessage.DEFAULT_WIDTH*2));
-					}
+			List<User> entries;
+			try {
+				entries = User.getByNameMatch(nameArgument);
+			} catch (Exception e) {
+				LOGGER.error("Failed to execute about '{}'", nameArgument, e);
+				ctx.getSource().sendSystemMessage(Component.literal("Failed to run /about command").withColor(TextColor.RED));
+				return;
+			}
+			for (User user : entries) {
+				if (player == null) {
+					LOGGER.info(user.toString());
 				}
-				default -> {
-					ctx.getSource().sendSystemMessage(Component.literal("this type is not supported for now."));
-					return;
-				}
+				body.add(new PlainMessage(user.format(), PlainMessage.DEFAULT_WIDTH*2));
 			}
 			if (player == null) return;
 
@@ -93,17 +86,5 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 
 		});
 		return 0;
-	}
-
-	enum AboutType implements StringRepresentable {
-		MINECRAFT,
-		DISCORD,
-		NAME,
-		;
-
-		@Override
-		public @NonNull String getSerializedName() {
-			return this.toString().toLowerCase();
-		}
 	}
 }

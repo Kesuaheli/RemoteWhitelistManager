@@ -1,6 +1,7 @@
 package de.kesuaheli.remotewhitelistmanager.database;
 
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.TextColor;
@@ -12,6 +13,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.random.RandomGenerator;
+import java.util.stream.Collectors;
+
+import static de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager.LOGGER;
 
 public class User {
 	private static final RandomGenerator RANDOM = new Random();
@@ -80,10 +84,30 @@ public class User {
 	}
 
 	public static @NotNull List<User> getByNameMatch(String name) {
-		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE lower("+TABLE+".online_name) LIKE lower(?) OR lower("+TABLE+".username) LIKE lower(?) OR lower("+TABLE+".nicknames) LIKE lower(?)")) {
+		List<UUID> uuids = new ArrayList<>();
+		for (UUID uuid : MarkerEntry.usernameCache.keySet()) {
+			String username = MarkerEntry.usernameCache.get(uuid).toLowerCase();
+			if (username.contains(name.toLowerCase())) {
+				uuids.add(uuid);
+			}
+		}
+		final String uuidQueryPlaceholders;
+		if (uuids.isEmpty()) {
+			uuidQueryPlaceholders = "";
+		} else {
+			final String placeholders = uuids.stream()
+					.map(_ ->"?")
+					.collect(Collectors.joining(", "));
+			uuidQueryPlaceholders = " OR "+WhitelistEntry.TABLE+".uuid IN ("+placeholders+")";
+		}
+
+		try (PreparedStatement statement = RemoteWhitelistmanager.getSQL().prepareStatement(GET_ALL_SQL+" WHERE lower("+TABLE+".online_name) LIKE lower(?) OR lower("+TABLE+".username) LIKE lower(?) OR lower("+TABLE+".nicknames) LIKE lower(?)" + uuidQueryPlaceholders)) {
 			statement.setString(1, "%"+name+"%");
 			statement.setString(2, "%"+name+"%");
 			statement.setString(3, "%"+name+"%");
+			for (int i = 0; i < uuids.size(); i++) {
+				statement.setString(i+4, uuids.get(i).toString());
+			}
 			ResultSet res = statement.executeQuery();
 			List<User> entries = new ArrayList<>();
 			while (res.next()) {
@@ -154,6 +178,20 @@ public class User {
 			String mcUsername = MarkerEntry.getUsername(this.whitelistEntry.uuid);
 			text.append(Component.literal(mcUsername).withColor(TextColor.WHITE));
 		}
+		text.append("\nRef: ");
+		if (this.reference == null) {
+			try {
+				this.reference = getByID(this.referenceID);
+			} catch (Exception e) {
+				LOGGER.error("Failed to get ref user by ID '{}'", this.referenceID, e);
+			}
+			if (this.reference == null) {
+				text.append(Component.literal("UNKNOWN<"+this.referenceID+">").withColor(TextColor.RED));
+				return text;
+			}
+		}
+
+		text.append(Component.literal(this.reference.username).withStyle(ChatFormatting.ITALIC));
 		return text;
 	}
 
