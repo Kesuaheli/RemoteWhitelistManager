@@ -27,6 +27,11 @@ public class RemoteWhitelistmanager implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> SERVER_INSTANCE = server);
+		ServerLifecycleEvents.SERVER_STOPPING.register(_ -> {
+			// closing threads of commands
+			About.stopThread();
+			RemoteWhitelist.stopThread();
+		});
 		CommandRegistrationCallback.EVENT.register((commandDispatcher, commandRegistryAccess, registrationEnvironment) -> {
 			commandDispatcher.register(new About());
 			commandDispatcher.register(new RemoteWhitelist());

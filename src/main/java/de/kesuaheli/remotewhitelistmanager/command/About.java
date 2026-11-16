@@ -34,6 +34,10 @@ public class About extends LiteralArgumentBuilder<CommandSourceStack> {
 		);
 	}
 
+	public static void stopThread() {
+		asyncExecutor.close();
+	}
+
 	private int execute(CommandContext<CommandSourceStack> ctx) {
 		ServerPlayer player = ctx.getSource().getPlayer();
 		List<DialogBody> body = new ArrayList<>();

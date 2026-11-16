@@ -55,6 +55,10 @@ public class RemoteWhitelist extends LiteralArgumentBuilder<CommandSourceStack> 
 		}
 	}
 
+	public static void stopThread() {
+		asyncExecutor.close();
+	}
+
 	private int connectDB(CommandContext<CommandSourceStack> ctx) {
 		asyncExecutor.submit(() -> {
 			final RemoteWhitelistmanager.SQLConnectionState state = RemoteWhitelistmanager.connectSQL();
