@@ -1,5 +1,6 @@
 package de.kesuaheli.remotewhitelistmanager;
 
+import com.mojang.authlib.GameProfile;
 import de.kesuaheli.remotewhitelistmanager.command.About;
 import de.kesuaheli.remotewhitelistmanager.command.RemoteWhitelist;
 import net.fabricmc.api.ModInitializer;
@@ -8,6 +9,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextColor;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.players.NameAndId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,10 +17,16 @@ import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 public class RemoteWhitelistmanager implements ModInitializer {
 	public static Logger LOGGER = LoggerFactory.getLogger("RemoteWhitelistmanager");
 	public static MinecraftServer SERVER_INSTANCE;
+
+	public static final Map<UUID, String> usernameCache = new HashMap<>();
 
 	private static Connection postgresConn;
 
@@ -98,5 +106,22 @@ public class RemoteWhitelistmanager implements ModInitializer {
 		public boolean ok() {
 			return this.color.equals(TextColor.GREEN);
 		}
+	}
+
+	public static String getUsername(UUID uuid) {
+		String name = usernameCache.get(uuid);
+		if (name != null) return name;
+
+		Optional<String> newName = SERVER_INSTANCE.services()
+				.nameToIdCache()
+				.get(uuid)
+				.map(NameAndId::name)
+				.or(() -> SERVER_INSTANCE.services()
+					.profileResolver()
+					.fetchById(uuid)
+					.map(GameProfile::name)
+				);
+		newName.ifPresent(s -> usernameCache.put(uuid, s));
+		return newName.orElse("UNRESOLVED NAME <"+uuid+">");
 	}
 }

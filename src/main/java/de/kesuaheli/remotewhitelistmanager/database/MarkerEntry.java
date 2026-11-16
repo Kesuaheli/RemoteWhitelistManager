@@ -1,6 +1,5 @@
 package de.kesuaheli.remotewhitelistmanager.database;
 
-import com.mojang.authlib.GameProfile;
 import de.kesuaheli.remotewhitelistmanager.RemoteWhitelistmanager;
 import net.pl3x.map.core.markers.marker.Rectangle;
 import net.pl3x.map.core.markers.option.Fill;
@@ -18,8 +17,6 @@ public class MarkerEntry extends Rectangle {
 	public final int ID;
 
 	private final String name;
-
-	public static final Map<UUID, String> usernameCache = new HashMap<>();
 
 	private final Options.Builder optionsBuilder = Options.builder();
 
@@ -110,7 +107,7 @@ public class MarkerEntry extends Rectangle {
 			popup.append("' heigth='");
 			popup.append(POPUP_IMG_SIZE);
 			popup.append("'><br><h4>");
-			popup.append(getUsername(user.uuid));
+			popup.append(RemoteWhitelistmanager.getUsername(user.uuid));
 			popup.append("</h4>");
 		}
 		tooltip.append("</div>");
@@ -162,18 +159,6 @@ public class MarkerEntry extends Rectangle {
 			"users=" + this.users +
 			", marker=" + super.toString()
 			;
-	}
-
-	public static String getUsername(UUID uuid) {
-		String name = usernameCache.get(uuid);
-		if (name != null) return name;
-
-		Optional<String> newName = RemoteWhitelistmanager.SERVER_INSTANCE.services()
-			.profileResolver()
-			.fetchById(uuid)
-			.map(GameProfile::name);
-		newName.ifPresent(s -> usernameCache.put(uuid, s));
-		return newName.orElse("UNRESOLVED NAME <"+uuid+">");
 	}
 
 	public static void clearCache() {

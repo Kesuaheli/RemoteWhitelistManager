@@ -85,8 +85,8 @@ public class User {
 
 	public static @NotNull List<User> getByNameMatch(String name) {
 		List<UUID> uuids = new ArrayList<>();
-		for (UUID uuid : MarkerEntry.usernameCache.keySet()) {
-			String username = MarkerEntry.usernameCache.get(uuid).toLowerCase();
+		for (UUID uuid : RemoteWhitelistmanager.usernameCache.keySet()) {
+			String username = RemoteWhitelistmanager.usernameCache.get(uuid).toLowerCase();
 			if (username.contains(name.toLowerCase())) {
 				uuids.add(uuid);
 			}
@@ -175,7 +175,7 @@ public class User {
 		}
 		if (this.whitelistEntry != null && this.whitelistEntry.isActive()) {
 			text.append("\nMinecraft: ");
-			String mcUsername = MarkerEntry.getUsername(this.whitelistEntry.uuid);
+			String mcUsername = RemoteWhitelistmanager.getUsername(this.whitelistEntry.uuid);
 			text.append(Component.literal(mcUsername).withColor(TextColor.WHITE));
 		}
 		text.append("\nRef: ");
